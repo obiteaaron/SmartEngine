@@ -1,10 +1,5 @@
 package com.alibaba.smart.framework.engine.behavior.base;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
 import com.alibaba.smart.framework.engine.behavior.ActivityBehavior;
 import com.alibaba.smart.framework.engine.bpmn.behavior.gateway.ExclusiveGatewayBehaviorHelper;
 import com.alibaba.smart.framework.engine.common.util.MapUtil;
@@ -24,10 +19,14 @@ import com.alibaba.smart.framework.engine.model.instance.ProcessInstance;
 import com.alibaba.smart.framework.engine.pvm.PvmActivity;
 import com.alibaba.smart.framework.engine.pvm.PvmTransition;
 import com.alibaba.smart.framework.engine.pvm.event.EventConstant;
-
 import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * @author 高海军 帝奇  2016.11.11
@@ -153,11 +152,12 @@ public abstract class AbstractActivityBehavior<T extends Activity> implements Ac
             if( outcomeTransitions.size() ==1){
                 for (Entry<String, PvmTransition> pvmTransitionEntry : outcomeTransitions.entrySet()) {
                     PvmActivity target = pvmTransitionEntry.getValue().getTarget();
+                    context.setTransition(pvmTransitionEntry.getValue().getModel());
                     target.enter(context);
                 }
             }else {
 
-                 ExclusiveGatewayBehaviorHelper.chooseOnlyOne(pvmActivity,context, outcomeTransitions);
+                 ExclusiveGatewayBehaviorHelper.choose(pvmActivity,context, outcomeTransitions, true);
 
             }
         }

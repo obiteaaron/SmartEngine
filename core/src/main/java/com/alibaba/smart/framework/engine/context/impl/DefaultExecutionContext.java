@@ -1,16 +1,16 @@
 package com.alibaba.smart.framework.engine.context.impl;
 
-import java.util.Map;
-
 import com.alibaba.smart.framework.engine.configuration.ProcessEngineConfiguration;
 import com.alibaba.smart.framework.engine.context.ExecutionContext;
 import com.alibaba.smart.framework.engine.model.assembly.BaseElement;
 import com.alibaba.smart.framework.engine.model.assembly.ProcessDefinition;
+import com.alibaba.smart.framework.engine.model.assembly.Transition;
 import com.alibaba.smart.framework.engine.model.instance.ActivityInstance;
 import com.alibaba.smart.framework.engine.model.instance.ExecutionInstance;
 import com.alibaba.smart.framework.engine.model.instance.ProcessInstance;
-
 import lombok.Data;
+
+import java.util.Map;
 
 /**
  *  Created by ettear on 16-4-19.
@@ -41,6 +41,8 @@ public class DefaultExecutionContext implements ExecutionContext {
     private boolean nested;
 
     private Long blockId;
+
+    private Transition transition;
 
 
 }

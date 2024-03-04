@@ -131,10 +131,10 @@ public class DefaultParallelServiceOrchestration implements ParallelServiceOrche
             //将ParentContext 复制到 子线程内
             ExecutionContext subThreadContext = contextFactory.createChildThreadContext(context);
 
-            PvmActivityTask pvmActivityTask = context.getProcessEngineConfiguration().getPvmActivityTaskFactory().create(target,subThreadContext);
+            PvmActivityTask pvmActivityTask = context.getProcessEngineConfiguration().getPvmActivityTaskFactory().create(target,subThreadContext, pvmTransitionEntry.getValue().getModel());
 
 
-            LOGGER.debug("PvmActivityTask thread id  is {}, subThreadContext is {} {} ", Thread.currentThread().getId(), subThreadContext);
+            LOGGER.debug("PvmActivityTask thread id  is {}, subThreadContext is {} ", Thread.currentThread().getId(), subThreadContext);
 
             pvmActivityTaskList.add(pvmActivityTask);
         }
