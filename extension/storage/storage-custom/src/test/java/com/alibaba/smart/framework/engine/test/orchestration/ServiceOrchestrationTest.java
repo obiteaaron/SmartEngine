@@ -1,15 +1,10 @@
 package com.alibaba.smart.framework.engine.test.orchestration;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import com.alibaba.smart.framework.engine.SmartEngine;
 import com.alibaba.smart.framework.engine.model.instance.ActivityInstance;
 import com.alibaba.smart.framework.engine.model.instance.ProcessInstance;
 import com.alibaba.smart.framework.engine.persister.custom.session.PersisterSession;
 import com.alibaba.smart.framework.engine.service.command.ProcessCommandService;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -19,6 +14,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @ContextConfiguration("/spring/service-orchestration-test.xml")
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -48,7 +47,7 @@ public class ServiceOrchestrationTest {
                 "exclusiveTest", "1.0.0",
                 request);
         } finally {
-            PersisterSession.destroySession();
+            PersisterSession.destroySession(processInstance);
 
         }
 

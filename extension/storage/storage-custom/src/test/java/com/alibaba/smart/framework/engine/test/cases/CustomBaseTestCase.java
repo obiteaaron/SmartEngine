@@ -12,7 +12,6 @@ import com.alibaba.smart.framework.engine.service.command.RepositoryCommandServi
 import com.alibaba.smart.framework.engine.service.query.ExecutionQueryService;
 import com.alibaba.smart.framework.engine.service.query.ProcessQueryService;
 import com.alibaba.smart.framework.engine.service.query.RepositoryQueryService;
-
 import org.junit.After;
 import org.junit.Before;
 
@@ -67,7 +66,7 @@ public class CustomBaseTestCase {
 
     @After
     public void clear() {
-        PersisterSession.destroySession();
+        PersisterSession.destroySessionAll();
         simpleAnnotationScanner.clear();
 
     }

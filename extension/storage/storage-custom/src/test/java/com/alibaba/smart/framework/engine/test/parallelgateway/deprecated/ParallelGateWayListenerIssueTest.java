@@ -1,22 +1,17 @@
 package com.alibaba.smart.framework.engine.test.parallelgateway.deprecated;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Executors;
-
 import com.alibaba.smart.framework.engine.configuration.ProcessEngineConfiguration;
 import com.alibaba.smart.framework.engine.model.instance.ExecutionInstance;
 import com.alibaba.smart.framework.engine.model.instance.InstanceStatus;
 import com.alibaba.smart.framework.engine.model.instance.ProcessInstance;
 import com.alibaba.smart.framework.engine.persister.custom.session.PersisterSession;
 import com.alibaba.smart.framework.engine.persister.util.InstanceSerializerFacade;
-
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.*;
+import java.util.concurrent.Executors;
 
 /**
   * @author chenhai
@@ -212,7 +207,7 @@ public class ParallelGateWayListenerIssueTest extends ParallelGateWayListenerIss
         // 判断主流程结束
         Assert.assertEquals(InstanceStatus.completed, parentProcessInstance.getStatus());
 
-        PersisterSession.destroySession();
+        PersisterSession.destroySessionAll();
 
     }
 
@@ -230,7 +225,7 @@ public class ParallelGateWayListenerIssueTest extends ParallelGateWayListenerIss
         }
 
         // 重建session
-        PersisterSession.destroySession();
+        PersisterSession.destroySessionAll();
 
         // 清空相关对象指针，防止误拿到之前的信息
         parentProcessInstance = null;

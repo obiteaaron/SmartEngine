@@ -1,10 +1,5 @@
 package com.alibaba.smart.framework.engine.persister.custom;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-
 import com.alibaba.smart.framework.engine.common.util.InstanceUtil;
 import com.alibaba.smart.framework.engine.configuration.ProcessEngineConfiguration;
 import com.alibaba.smart.framework.engine.exception.EngineException;
@@ -15,6 +10,10 @@ import com.alibaba.smart.framework.engine.model.instance.ActivityInstance;
 import com.alibaba.smart.framework.engine.model.instance.ExecutionInstance;
 import com.alibaba.smart.framework.engine.model.instance.ProcessInstance;
 import com.alibaba.smart.framework.engine.persister.custom.session.PersisterSession;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static com.alibaba.smart.framework.engine.persister.common.constant.StorageConstant.NOT_IMPLEMENT_INTENTIONALLY;
 
@@ -39,44 +38,32 @@ public class CustomExecutionInstanceStorage implements ExecutionInstanceStorage 
     public ExecutionInstance find(String instanceId,
                                   ProcessEngineConfiguration processEngineConfiguration) {
 
-        Collection<ProcessInstance> processInstances = PersisterSession.currentSession().getProcessInstances().values();
-
-        boolean matched = false;
+        ProcessInstance processInstance = PersisterSession.currentSession().getProcessInstanceByExecutionInstanceId(instanceId);
 
         ExecutionInstance executionInstance = null;
 
-        for (ProcessInstance processInstance : processInstances) {
+        List<ActivityInstance> activityInstances = processInstance.getActivityInstances();
 
-            List<ActivityInstance> activityInstances = processInstance.getActivityInstances();
+        if (null == activityInstances || activityInstances.isEmpty()) {
 
-            if (null == activityInstances || activityInstances.isEmpty()) {
+            // do nothing , cause exception.
+        } else {
+            int size = activityInstances.size();
+            for (int i = size - 1; i >= 0; i--) {
+                ActivityInstance activityInstance = activityInstances.get(i);
 
-                // do nothing , cause exception.
-            } else {
-                int size = activityInstances.size();
-                for (int i = size - 1; i >= 0; i--) {
-                    ActivityInstance activityInstance = activityInstances.get(i);
-
-                    List<ExecutionInstance> executionInstances =    activityInstance.getExecutionInstanceList();
-                    for (ExecutionInstance tempExecutionInstance : executionInstances) {
-                        if (null != tempExecutionInstance && tempExecutionInstance.getInstanceId().equals(instanceId)) {
-                            executionInstance = tempExecutionInstance;
-                            matched = true;
-                            break;
-
-                        }
+                List<ExecutionInstance> executionInstances = activityInstance.getExecutionInstanceList();
+                for (ExecutionInstance tempExecutionInstance : executionInstances) {
+                    if (null != tempExecutionInstance && tempExecutionInstance.getInstanceId().equals(instanceId)) {
+                        executionInstance = tempExecutionInstance;
+                        break;
                     }
-
                 }
-
-            }
-            if (matched) {
-                break;
             }
         }
 
-        if(!matched){
-            throw new EngineException("No ExecutionInstance found for id : "+instanceId);
+        if (executionInstance == null) {
+            throw new EngineException("No ExecutionInstance found for id : " + instanceId);
         }
 
         return executionInstance;

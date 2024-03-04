@@ -1,9 +1,5 @@
 package com.alibaba.smart.framework.engine.test.parallelgateway;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.Executors;
-
 import com.alibaba.smart.framework.engine.SmartEngine;
 import com.alibaba.smart.framework.engine.configuration.LockStrategy;
 import com.alibaba.smart.framework.engine.configuration.impl.DefaultProcessEngineConfiguration;
@@ -16,11 +12,13 @@ import com.alibaba.smart.framework.engine.service.command.ExecutionCommandServic
 import com.alibaba.smart.framework.engine.service.command.RepositoryCommandService;
 import com.alibaba.smart.framework.engine.service.query.ExecutionQueryService;
 import com.alibaba.smart.framework.engine.test.DoNothingLockStrategy;
-
-import com.alibaba.smart.framework.engine.util.ThreadPoolUtil;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.Executors;
 
 
 public class CallActivityParallelGateWayTest {
@@ -125,8 +123,9 @@ public class CallActivityParallelGateWayTest {
         Assert.assertNotNull(task2ExecutionInstance);
         Assert.assertEquals("task_2", task2ExecutionInstance.getProcessDefinitionActivityId());
 
+        PersisterSession.destroySession(processInstance);
+        PersisterSession.destroySession(childProcessInstance1);
         // ==== Signal Task 2, 重置下session ====
-        PersisterSession.destroySession();
         PersisterSession.create().putProcessInstance(parentProcessInstance);
         session = PersisterSession.currentSession();
 
@@ -236,7 +235,7 @@ public class CallActivityParallelGateWayTest {
             }
         }
 
-        PersisterSession.destroySession();
+        PersisterSession.destroySessionAll();
 
     }
 }

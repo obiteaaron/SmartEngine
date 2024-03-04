@@ -4,65 +4,31 @@
  */
 package com.alibaba.smart.framework.engine.persister.custom.session;
 
-import java.util.Map;
-import java.util.Stack;
-import java.util.concurrent.ConcurrentHashMap;
-
+import com.alibaba.smart.framework.engine.model.instance.ActivityInstance;
+import com.alibaba.smart.framework.engine.model.instance.ExecutionInstance;
 import com.alibaba.smart.framework.engine.model.instance.ProcessInstance;
+import lombok.Getter;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author xuantian 2017-02-08 5:50 xuantian
  */
 public class PersisterSession {
 
+    @Getter
+    private final Map<String, ProcessInstance> processInstances = new ConcurrentHashMap<String, ProcessInstance>(8);
+
+    private final Map<String, ProcessInstance> executionInstanceIdIndex = new ConcurrentHashMap<String, ProcessInstance>(8);
+
+    private final Map<String, ProcessInstance> activityInstanceIdIndex = new ConcurrentHashMap<String, ProcessInstance>(8);
 
     /**
-     * The Session Thread Local.
+     * 唯一静态实例
      */
-    private static InheritableThreadLocal<Stack<PersisterSession>> sessionThreadLocal = new InheritableThreadLocal<Stack<PersisterSession>>();
-
-    private Map<String, ProcessInstance> processInstances = new ConcurrentHashMap<String, ProcessInstance>(8);
-
-    public static PersisterSession create() {
-        PersisterSession session = new PersisterSession();
-        getOrBuildStack(sessionThreadLocal).push(session);
-        return session;
-
-    }
-
-    /**
-     * @return the BizSession got from the thread local.
-     */
-    public static PersisterSession currentSession() {
-        Stack<PersisterSession> sessions = getOrBuildStack(sessionThreadLocal);
-        if (sessions.isEmpty()) {
-            return null;
-        }
-        return sessions.peek();
-    }
-
-    /**
-     * the static method for destroy session for easy using.
-     */
-    public static void destroySession() {
-        Stack<PersisterSession> stack = getOrBuildStack(sessionThreadLocal);
-        stack.pop();
-
-        // 当线程被复用时，导致stack被多个子线程共享，进而导致push/pop 不被成对调用了，最终导致数据错乱。
-        if(stack.isEmpty()){
-            sessionThreadLocal.remove();
-        }
-    }
-
-
-    private static <T> Stack<T> getOrBuildStack(ThreadLocal<Stack<T>> threadLocal) {
-        Stack<T> stack = threadLocal.get();
-        if (stack==null) {
-            stack = new Stack<T>();
-            threadLocal.set(stack);
-        }
-        return stack;
-    }
+    private static final PersisterSession INSTANCE = new PersisterSession();
 
     /**
      * default constructor.
@@ -71,18 +37,87 @@ public class PersisterSession {
 
     }
 
+    public static PersisterSession create() {
+        // 兼容原有方法不变
+        return INSTANCE;
+    }
 
+    /**
+     * @return the BizSession got from the thread local.
+     */
+    public static PersisterSession currentSession() {
+        // 兼容原有方法不变
+        return INSTANCE;
+    }
 
-    public Map<String, ProcessInstance> getProcessInstances() {
-        return processInstances;
+    /**
+     * the static method for destroy session for easy using.
+     * @see #destroySession(ProcessInstance)
+     */
+    @Deprecated
+    public static void destroySession() {
+        // 兼容原有方法不变
+        // 此处什么都不做
+    }
+
+    /**
+     * 销毁会话，业务使用完成后需要销毁，避免内存堆积过多导致OOM或者内存泄露
+     *
+     * @param processInstance 流程实例
+     */
+    public static void destroySession(ProcessInstance processInstance) {
+        if (processInstance == null || processInstance.getInstanceId() == null) {
+            return;
+        }
+        INSTANCE.processInstances.remove(processInstance.getInstanceId());
+
+        List<ActivityInstance> activityInstances = processInstance.getActivityInstances();
+        if (activityInstances != null && !activityInstances.isEmpty()) {
+            for (ActivityInstance activityInstance : activityInstances) {
+                INSTANCE.activityInstanceIdIndex.remove(activityInstance.getInstanceId());
+                List<ExecutionInstance> executionInstanceList = activityInstance.getExecutionInstanceList();
+                if (executionInstanceList != null && !executionInstanceList.isEmpty()) {
+                    for (ExecutionInstance executionInstance : executionInstanceList) {
+                        INSTANCE.executionInstanceIdIndex.remove(executionInstance.getInstanceId());
+                    }
+                }
+            }
+        }
+    }
+
+    public static void destroySessionAll() {
+        INSTANCE.processInstances.clear();
+        INSTANCE.activityInstanceIdIndex.clear();
+        INSTANCE.executionInstanceIdIndex.clear();
     }
 
 
     public void putProcessInstance(ProcessInstance processInstance) {
         this.processInstances.put(processInstance.getInstanceId(), processInstance);
+
+        List<ActivityInstance> activityInstances = processInstance.getActivityInstances();
+        if (activityInstances != null && !activityInstances.isEmpty()) {
+            for (ActivityInstance activityInstance : activityInstances) {
+                INSTANCE.activityInstanceIdIndex.put(activityInstance.getInstanceId(), processInstance);
+                List<ExecutionInstance> executionInstanceList = activityInstance.getExecutionInstanceList();
+                if (executionInstanceList != null && !executionInstanceList.isEmpty()) {
+                    for (ExecutionInstance executionInstance : executionInstanceList) {
+                        INSTANCE.executionInstanceIdIndex.put(executionInstance.getInstanceId(), processInstance);
+                    }
+                }
+            }
+        }
     }
 
     public ProcessInstance getProcessInstance(String instanceId) {
         return this.processInstances.get(instanceId);
+    }
+
+    public ProcessInstance getProcessInstanceByExecutionInstanceId(String instanceId) {
+        return executionInstanceIdIndex.get(instanceId);
+    }
+
+    public ProcessInstance getProcessInstanceByActivityInstanceId(String instanceId) {
+        return activityInstanceIdIndex.get(instanceId);
     }
 }

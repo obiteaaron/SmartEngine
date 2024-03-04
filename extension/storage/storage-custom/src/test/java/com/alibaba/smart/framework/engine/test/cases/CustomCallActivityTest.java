@@ -1,20 +1,15 @@
 package com.alibaba.smart.framework.engine.test.cases;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import com.alibaba.smart.framework.engine.model.assembly.ProcessDefinition;
 import com.alibaba.smart.framework.engine.model.instance.ExecutionInstance;
 import com.alibaba.smart.framework.engine.model.instance.InstanceStatus;
 import com.alibaba.smart.framework.engine.model.instance.ProcessInstance;
 import com.alibaba.smart.framework.engine.persister.custom.session.PersisterSession;
 import com.alibaba.smart.framework.engine.service.command.RepositoryCommandService;
-
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -88,7 +83,8 @@ public class CustomCallActivityTest extends CustomBaseTestCase {
 
         assertEquals(InstanceStatus.completed, processInstance4.getStatus());
 
-        PersisterSession.destroySession();
+        PersisterSession.destroySession(processInstance4);
+        PersisterSession.destroySession(subProcessInstance);
 
     }
 
@@ -150,7 +146,7 @@ public class CustomCallActivityTest extends CustomBaseTestCase {
         ProcessInstance processInstance = processCommandService.start(
             parentProcessDefinition.getId(), parentProcessDefinition.getVersion(), request
         );
-        PersisterSession.destroySession();
+        PersisterSession.destroySession(processInstance);
 
         return processInstance;
     }
@@ -173,7 +169,7 @@ public class CustomCallActivityTest extends CustomBaseTestCase {
         ExecutionInstance firstExecutionInstance = executionInstanceList.get(0);
         assertTrue("pre_order".equals(firstExecutionInstance.getProcessDefinitionActivityId()));
 
-        PersisterSession.destroySession();
+        PersisterSession.destroySession(latestProcessInstance);
 
         return firstExecutionInstance;
 

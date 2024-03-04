@@ -1,8 +1,5 @@
 package com.alibaba.smart.framework.engine.persister.custom;
 
-import java.util.Collection;
-import java.util.List;
-
 import com.alibaba.smart.framework.engine.configuration.ProcessEngineConfiguration;
 import com.alibaba.smart.framework.engine.exception.EngineException;
 import com.alibaba.smart.framework.engine.extension.annoation.ExtensionBinding;
@@ -11,6 +8,8 @@ import com.alibaba.smart.framework.engine.instance.storage.ActivityInstanceStora
 import com.alibaba.smart.framework.engine.model.instance.ActivityInstance;
 import com.alibaba.smart.framework.engine.model.instance.ProcessInstance;
 import com.alibaba.smart.framework.engine.persister.custom.session.PersisterSession;
+
+import java.util.List;
 
 import static com.alibaba.smart.framework.engine.persister.common.constant.StorageConstant.NOT_IMPLEMENT_INTENTIONALLY;
 
@@ -35,22 +34,16 @@ public class CustomActivityInstanceStorage implements ActivityInstanceStorage {
     @Override
     public ActivityInstance find(String activityInstanceId,
                                  ProcessEngineConfiguration processEngineConfiguration) {
-        Collection<ProcessInstance> processInstances = PersisterSession.currentSession().getProcessInstances().values();
 
-        boolean matched = false;
+        ProcessInstance processInstance = PersisterSession.currentSession().getProcessInstanceByActivityInstanceId(activityInstanceId);
+
         ActivityInstance matchedActivityInstance = null;
 
-        for (ProcessInstance processInstance : processInstances) {
-            List<ActivityInstance> activityInstances = processInstance.getActivityInstances();
+        List<ActivityInstance> activityInstances = processInstance.getActivityInstances();
 
-            for (ActivityInstance activityInstance : activityInstances) {
-                if (activityInstance.getInstanceId().equals(activityInstanceId)) {
-                    matched= true;
-                    matchedActivityInstance = activityInstance;
-                    break;
-                }
-            }
-            if(matched){
+        for (ActivityInstance activityInstance : activityInstances) {
+            if (activityInstance.getInstanceId().equals(activityInstanceId)) {
+                matchedActivityInstance = activityInstance;
                 break;
             }
         }
