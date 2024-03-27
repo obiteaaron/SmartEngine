@@ -192,6 +192,10 @@ public class ParallelGatewayBehavior extends AbstractActivityBehavior<ParallelGa
             try {
                 // 2024年3月27日 原来的代码是invokeAll，且没有执行get，那么会在子线程异常，且子线程的逻辑时向上抛出异常时，丢失异常信息，形成流程阻断无法排查问题。
                 // 此处修改为自己get等待结束，遇到异常则抛出
+                // 注意这里的invokeAll会一直阻塞，如果遇到多层并行网关嵌套，超过ThreadPoolExecutor线程池容量的情况下，会出现线程池死锁，建议：
+                // 1. 建议采用ForkJoinPool，但依然不能嵌套太多层，避免StackOverflow。
+                // 2. 也可以采用ThreadPoolExecutor，用SynchronousQueue+CallerRunsPolicy，但依然不能嵌套太多层，避免StackOverflow。
+                // 关于子线程的Trace如何传递的问题，建议在实现 JavaDelegation 和 Listener 的时候增加顶级抽象类，用于组转业务参数，以及将 TraceId 尽早写入到 MDC 或者子线程能取到的地方。
                 List<Future<PvmActivity>> futures = executorService.invokeAll(tasks);
                 for (Future<PvmActivity> future : futures) {
                     future.get();
