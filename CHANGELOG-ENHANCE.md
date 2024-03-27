@@ -10,5 +10,5 @@
 建议：
 1. 使用并行网关时，不建议使用多线程，理由如下：
    1. 单线程在绝大多数情况下足够使用了。如果一定需要并行，建议业务将并行网关Fork下游节点实现为异步逻辑，可以暂停、恢复，并行网关暂停恢复已经在增强版支持。
-   2. 多线程会无法带入上下文信息，导致TraceId丢失。关于子线程的Trace如何传递的问题，建议在实现 JavaDelegation 和 Listener 的时候增加顶级抽象类，用于组转业务参数，以及将 TraceId 尽早写入到 MDC 或者子线程能取到的地方。
+   2. 多线程会无法带入上下文信息，导致TraceId丢失。关于子线程的 TraceId 如何传递的问题，建议将TraceId写入Request中，并且在实现 JavaDelegation 和 Listener 的时候增加顶级抽象类，用于组转业务参数，以及读取 Request 中的 TraceId 并尽早写入到 MDC 或者子线程能取到的地方。
    3. 并行网关多层嵌套时，如果太多层，会出现死锁，如果一定要用多线程，建议采用ForkJoinPool，也可以采用ThreadPoolExecutor，用SynchronousQueue+CallerRunsPolicy，但依然不能嵌套太多层，避免StackOverflow。

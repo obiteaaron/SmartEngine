@@ -195,7 +195,7 @@ public class ParallelGatewayBehavior extends AbstractActivityBehavior<ParallelGa
                 // 注意这里的invokeAll会一直阻塞，如果遇到多层并行网关嵌套，超过ThreadPoolExecutor线程池容量的情况下，会出现线程池死锁，建议：
                 // 1. 建议采用ForkJoinPool，但依然不能嵌套太多层，避免StackOverflow。
                 // 2. 也可以采用ThreadPoolExecutor，用SynchronousQueue+CallerRunsPolicy，但依然不能嵌套太多层，避免StackOverflow。
-                // 关于子线程的Trace如何传递的问题，建议在实现 JavaDelegation 和 Listener 的时候增加顶级抽象类，用于组转业务参数，以及将 TraceId 尽早写入到 MDC 或者子线程能取到的地方。
+                // 关于子线程的 TraceId 如何传递的问题，建议将TraceId写入Request中，并且在实现 JavaDelegation 和 Listener 的时候增加顶级抽象类，用于组转业务参数，以及读取 Request 中的 TraceId 并尽早写入到 MDC 或者子线程能取到的地方。
                 List<Future<PvmActivity>> futures = executorService.invokeAll(tasks);
                 for (Future<PvmActivity> future : futures) {
                     future.get();
