@@ -9,7 +9,9 @@ import com.alibaba.smart.framework.engine.pvm.PvmActivity;
  */
 public interface ActivityBehavior {
 
-
+    /**
+     * @return true 流程分支将会暂停、false 流程分支不会暂停
+     */
     boolean enter(ExecutionContext context, PvmActivity pvmActivity);
 
     void execute(ExecutionContext context, PvmActivity pvmActivity);

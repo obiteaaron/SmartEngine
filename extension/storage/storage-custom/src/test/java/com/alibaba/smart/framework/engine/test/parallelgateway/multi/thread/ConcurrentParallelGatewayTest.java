@@ -10,10 +10,8 @@ import com.alibaba.smart.framework.engine.persister.custom.session.PersisterSess
 import com.alibaba.smart.framework.engine.persister.util.InstanceSerializerFacade;
 import com.alibaba.smart.framework.engine.test.DoNothingLockStrategy;
 import com.alibaba.smart.framework.engine.test.cases.CustomBaseTestCase;
-import com.alibaba.smart.framework.engine.util.ThreadPoolUtil;
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.jupiter.api.RepeatedTest;
 
 import java.util.HashMap;
 import java.util.List;

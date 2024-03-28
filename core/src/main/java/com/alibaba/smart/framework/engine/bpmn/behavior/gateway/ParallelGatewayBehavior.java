@@ -80,55 +80,62 @@ public class ParallelGatewayBehavior extends AbstractActivityBehavior<ParallelGa
             // update at 2022.10.31 这里的缩粒度不够大,在极端环境下,还是存在数据可见性的问题.
             // 比如说,当这个锁结束后, 外面还需要进行持久化数据. 理论上,另外一个线程进来执行时,可能这个持久化数据还未完成.
             // 所以这里取消掉默认锁,改为建议在生产环境使用使用分布式锁.
-            super.enter(context, pvmActivity);
-            Collection<PvmTransition> inComingPvmTransitions = incomeTransitions.values();
-            ProcessInstance processInstance = context.getProcessInstance();
+            // 2024年3月28日，以上为原作者的建议，并且原作者已经删除了默认的锁实现接口。但原作者描述的其实是并行网关的前置节点，多条线分别过来，在不同signal触发的情况下，数据存在可见性问题。
+            // 如果当前组件只是内存执行，而且执行很快，比如单测com.alibaba.smart.framework.engine.test.parallelgateway.multi.thread.ConcurrentParallelGatewayTest.testServiceTaskParallelGateway中，
+            // 由于单测什么都不做，执行非常快，并且直接通过，会出现在com.alibaba.smart.framework.engine.common.util.InstanceUtil.findActiveExecution时产生ConcurrentModificationException异常
+            // 而原来的代码，在invokeAll之后，并没有再一次get。invokeAll会将内部的异常信息隐藏掉，导致异常信息并没有表现出来，所以原来单测能过，且流程并不会因为节点失败而停止，还会继续往后执行，这不符合预期。
+            // 因此，这里在做join的时候，依然需要使用锁，外部signal的时候，需要对整个流程加分布式锁，避免业务数据修改版本错乱。而内部依然需要同步锁，避免多线程快速执行时流程表现为异常。
+            synchronized (context.getProcessInstance()) {
+                super.enter(context, pvmActivity);
+                Collection<PvmTransition> inComingPvmTransitions = incomeTransitions.values();
+                ProcessInstance processInstance = context.getProcessInstance();
 
-            // 当前内存中的，新产生的 active ExecutionInstance
-            List<ExecutionInstance> executionInstanceListFromMemory = InstanceUtil.findActiveExecution(processInstance);
+                // 当前内存中的，新产生的 active ExecutionInstance
+                List<ExecutionInstance> executionInstanceListFromMemory = InstanceUtil.findActiveExecution(processInstance);
 
-            // 当前持久化介质中中，已产生的 active ExecutionInstance。
-            List<ExecutionInstance> executionInstanceListFromDB = executionInstanceStorage.findActiveExecution(processInstance.getInstanceId(), super.processEngineConfiguration);
-            LOGGER.debug("ParallelGatewayBehavior Joined, the  value of  executionInstanceListFromMemory, executionInstanceListFromDB   is {} , {} ", executionInstanceListFromMemory, executionInstanceListFromDB);
+                // 当前持久化介质中中，已产生的 active ExecutionInstance。
+                List<ExecutionInstance> executionInstanceListFromDB = executionInstanceStorage.findActiveExecution(processInstance.getInstanceId(), super.processEngineConfiguration);
+                LOGGER.debug("ParallelGatewayBehavior Joined, the  value of  executionInstanceListFromMemory, executionInstanceListFromDB   is {} , {} ", executionInstanceListFromMemory, executionInstanceListFromDB);
 
-            // Merge 数据库中和内存中的EI。如果是 custom模式，则可能会存在重复记录，所以这里需要去重。 如果是 DataBase 模式，则不会有重复的EI.
-            List<ExecutionInstance> mergedExecutionInstanceList = new ArrayList<ExecutionInstance>(executionInstanceListFromMemory.size());
-            for (ExecutionInstance instance : executionInstanceListFromDB) {
-                if (executionInstanceListFromMemory.contains(instance)) {
-                    //ignore
-                } else {
-                    mergedExecutionInstanceList.add(instance);
-                }
-            }
-            mergedExecutionInstanceList.addAll(executionInstanceListFromMemory);
-
-            int reachedJoinCounter = 0;
-            List<ExecutionInstance> chosenExecutionInstanceList = new ArrayList<ExecutionInstance>(executionInstanceListFromMemory.size());
-
-            for (ExecutionInstance executionInstance : mergedExecutionInstanceList) {
-                if (executionInstance.getProcessDefinitionActivityId().equals(parallelGateway.getId())) {
-                    reachedJoinCounter++;
-                    chosenExecutionInstanceList.add(executionInstance);
-                }
-            }
-
-            int countOfTheJoinLatch = inComingPvmTransitions.size();
-
-            LOGGER.debug("chosenExecutionInstanceList , reachedJoinCounter,countOfTheJoinLatch  is {} , {} , {} ", chosenExecutionInstanceList, reachedJoinCounter, countOfTheJoinLatch);
-
-            ExecutionInstance executionInstanceCurrent = context.getExecutionInstance();
-            if (reachedJoinCounter == countOfTheJoinLatch) {
-                // 把当前停留在join节点的执行实例，除了当前实例外，其他的全部complete掉，主要是为了确保当前节点的execute可以正常执行和暂停。然后再持久化时，会自动忽略掉这些节点。
-                for (ExecutionInstance executionInstance : chosenExecutionInstanceList) {
-                    if (executionInstanceCurrent.equals(executionInstance)) {
-                        continue;
+                // Merge 数据库中和内存中的EI。如果是 custom模式，则可能会存在重复记录，所以这里需要去重。 如果是 DataBase 模式，则不会有重复的EI.
+                List<ExecutionInstance> mergedExecutionInstanceList = new ArrayList<ExecutionInstance>(executionInstanceListFromMemory.size());
+                for (ExecutionInstance instance : executionInstanceListFromDB) {
+                    if (executionInstanceListFromMemory.contains(instance)) {
+                        //ignore
+                    } else {
+                        mergedExecutionInstanceList.add(instance);
                     }
-                    MarkDoneUtil.markDoneExecutionInstance(executionInstance, executionInstanceStorage, processEngineConfiguration);
                 }
-                return false;
-            } else {
-                // 未完成的话,流程继续暂停
-                return true;
+                mergedExecutionInstanceList.addAll(executionInstanceListFromMemory);
+
+                int reachedJoinCounter = 0;
+                List<ExecutionInstance> chosenExecutionInstanceList = new ArrayList<ExecutionInstance>(executionInstanceListFromMemory.size());
+
+                for (ExecutionInstance executionInstance : mergedExecutionInstanceList) {
+                    if (executionInstance.getProcessDefinitionActivityId().equals(parallelGateway.getId())) {
+                        reachedJoinCounter++;
+                        chosenExecutionInstanceList.add(executionInstance);
+                    }
+                }
+
+                int countOfTheJoinLatch = inComingPvmTransitions.size();
+
+                LOGGER.debug("chosenExecutionInstanceList , reachedJoinCounter,countOfTheJoinLatch  is {} , {} , {} ", chosenExecutionInstanceList, reachedJoinCounter, countOfTheJoinLatch);
+
+                ExecutionInstance executionInstanceCurrent = context.getExecutionInstance();
+                if (reachedJoinCounter == countOfTheJoinLatch) {
+                    // 把当前停留在join节点的执行实例，除了当前实例外，其他的全部complete掉，主要是为了确保当前节点的execute可以正常执行和暂停。然后再持久化时，会自动忽略掉这些节点。
+                    for (ExecutionInstance executionInstance : chosenExecutionInstanceList) {
+                        if (executionInstanceCurrent.equals(executionInstance)) {
+                            continue;
+                        }
+                        MarkDoneUtil.markDoneExecutionInstance(executionInstance, executionInstanceStorage, processEngineConfiguration);
+                    }
+                    return false;
+                } else {
+                    // 未完成的话,流程继续暂停
+                    return true;
+                }
             }
         }
     }
@@ -157,7 +164,7 @@ public class ParallelGatewayBehavior extends AbstractActivityBehavior<ParallelGa
 
         Map<String, PvmTransition> outcomeTransitions = pvmActivity.getOutcomeTransitions();
         if (MapUtil.isEmpty(outcomeTransitions)) {
-            LOGGER.info("No outcomeTransitions found for activity id: {}, it's just fine, maybe it should be the last activity of the process.", pvmActivity.getModel().getId());
+            LOGGER.warn("InclusiveGateway No outcome transitions activityInstanceId={}", context.getActivityInstance().getInstanceId());
             return;
         }
 
@@ -184,6 +191,8 @@ public class ParallelGatewayBehavior extends AbstractActivityBehavior<ParallelGa
 
                 // 注意,ExecutionContext 在多线程情况下,必须要新建对象,防止一些变量被并发修改.
                 ExecutionContext subThreadContext = contextFactory.createChildThreadContext(context);
+                // 给上下文加入连线信息
+                subThreadContext.setTransition(pvmTransitionEntry.getValue().getModel());
                 PvmActivityTask task = context.getProcessEngineConfiguration().getPvmActivityTaskFactory().create(target, subThreadContext, pvmTransitionEntry.getValue().getModel());
 
                 tasks.add(task);
